@@ -17,7 +17,7 @@
   version = "1.0.1217";
   srcExe = fetchurl {
     url = "https://downloads.claude.ai/releases/win32/x64/${version}/Claude-0cb4a3120aa28421aeb48e8c54f5adf8414ab411.exe";
-    hash = "sha256-k9U85QFA3r8JfZQZxtvo+9qotxPydSELgles1lphALI=";
+    hash = "sha256-baSOogkwk0wcG9UmZt4MFFj+ovtwidPQtHmsUnsUCIA=";
   };
 in
   stdenvNoCC.mkDerivation rec {
