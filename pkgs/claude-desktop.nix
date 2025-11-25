@@ -138,16 +138,21 @@ in
         echo "Claude Code binary path: ${claude-code}/bin/claude"
 
         CLAUDE_CODE_INDEX="app.asar.contents/.vite/build/index.js"
-        CLAUDE_BIN_PATH="${claude-code}/bin/claude"
 
         if [ -f "$CLAUDE_CODE_INDEX" ]; then
           echo "Found index.js, applying Claude Code patches..."
 
           # Patch 1: getBinaryPathIfReady() - Check Nix store path for claude on Linux
-          perl -i -0777 -pe "s/\\Qasync getBinaryPathIfReady(){return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}\\E/async getBinaryPathIfReady(){console.log(\"[ClaudeCode] getBinaryPathIfReady called, platform:\",process.platform);if(process.platform===\"linux\"){try{const fs=require(\"fs\");const claudePath=\"$CLAUDE_BIN_PATH\";const exists=fs.existsSync(claudePath);console.log(\"[ClaudeCode]\",claudePath,\"exists:\",exists);if(exists)return claudePath}catch(e){console.log(\"[ClaudeCode] error checking claude binary:\",e)}}return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}/g" "$CLAUDE_CODE_INDEX"
+          substituteInPlace "$CLAUDE_CODE_INDEX" \
+            --replace-fail \
+              'async getBinaryPathIfReady(){return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}' \
+              'async getBinaryPathIfReady(){console.log("[ClaudeCode] getBinaryPathIfReady called, platform:",process.platform);if(process.platform==="linux"){try{const fs=require("fs");const claudePath="${claude-code}/bin/claude";const exists=fs.existsSync(claudePath);console.log("[ClaudeCode]",claudePath,"exists:",exists);if(exists)return claudePath}catch(e){console.log("[ClaudeCode] error checking claude binary:",e)}}return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}'
 
           # Patch 2: getStatus() - Return Ready if Nix store binary exists on Linux
-          perl -i -0777 -pe "s/\\Qasync getStatus(){if(await this.binaryExists(this.requiredVersion))\\E/async getStatus(){console.log(\"[ClaudeCode] getStatus called, platform:\",process.platform);if(process.platform===\"linux\"){try{const fs=require(\"fs\");const claudePath=\"$CLAUDE_BIN_PATH\";const exists=fs.existsSync(claudePath);console.log(\"[ClaudeCode]\",claudePath,\"exists:\",exists);if(exists){console.log(\"[ClaudeCode] returning Ready\");return Rv.Ready}}catch(e){console.log(\"[ClaudeCode] error:\",e)}}if(await this.binaryExists(this.requiredVersion))/g" "$CLAUDE_CODE_INDEX"
+          substituteInPlace "$CLAUDE_CODE_INDEX" \
+            --replace-fail \
+              'async getStatus(){if(await this.binaryExists(this.requiredVersion))' \
+              'async getStatus(){console.log("[ClaudeCode] getStatus called, platform:",process.platform);if(process.platform==="linux"){try{const fs=require("fs");const claudePath="${claude-code}/bin/claude";const exists=fs.existsSync(claudePath);console.log("[ClaudeCode]",claudePath,"exists:",exists);if(exists){console.log("[ClaudeCode] returning Ready");return Rv.Ready}}catch(e){console.log("[ClaudeCode] error:",e)}}if(await this.binaryExists(this.requiredVersion))'
 
           echo "Successfully patched Claude Code support"
         else
