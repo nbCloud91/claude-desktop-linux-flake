@@ -10,14 +10,14 @@
   makeDesktopItem,
   makeWrapper,
   patchy-cnb,
-  perl
+  perl,
+  claude-code ? null
 }: let
   pname = "claude-desktop";
-  version = "0.14.10";
+  version = "1.0.1217";
   srcExe = fetchurl {
-    # NOTE: `?v=0.10.0` doesn't actually request a specific version. It's only being used here as a cache buster.
-    url = "https://storage.googleapis.com/osprey-downloads-c02f6a0d-347c-492b-a752-3e0651722e97/nest-win-x64/Claude-Setup-x64.exe?v=${version}";
-    hash = "sha256-Sn/lvMlfKd7b/utFvCxrkWNDJTug4OOSA4lo9YV8aqk=";
+    url = "https://downloads.claude.ai/releases/win32/x64/${version}/Claude-0cb4a3120aa28421aeb48e8c54f5adf8414ab411.exe";
+    hash = "sha256-k9U85QFA3r8JfZQZxtvo+9qotxPydSELgles1lphALI=";
   };
 in
   stdenvNoCC.mkDerivation rec {
@@ -130,6 +130,31 @@ in
       fi
       echo "##############################################################"
       # exit 1
+
+      ${lib.optionalString (claude-code != null) ''
+        echo "##############################################################"
+        echo "Patching Claude Code support for Linux"
+        echo "Target file: app.asar.contents/.vite/build/index.js"
+        echo "Claude Code binary path: ${claude-code}/bin/claude"
+
+        CLAUDE_CODE_INDEX="app.asar.contents/.vite/build/index.js"
+        CLAUDE_BIN_PATH="${claude-code}/bin/claude"
+
+        if [ -f "$CLAUDE_CODE_INDEX" ]; then
+          echo "Found index.js, applying Claude Code patches..."
+
+          # Patch 1: getBinaryPathIfReady() - Check Nix store path for claude on Linux
+          perl -i -0777 -pe 's/\Qasync getBinaryPathIfReady(){return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}\E/async getBinaryPathIfReady(){console.log("[ClaudeCode] getBinaryPathIfReady called, platform:",process.platform);if(process.platform==="linux"){try{const fs=require("fs");const claudePath="'"$CLAUDE_BIN_PATH"'";const exists=fs.existsSync(claudePath);console.log("[ClaudeCode]",claudePath,"exists:",exists);if(exists)return claudePath}catch(e){console.log("[ClaudeCode] error checking claude binary:",e)}}return await this.binaryExists(this.requiredVersion)?this.getBinaryPath(this.requiredVersion):null}/g' "$CLAUDE_CODE_INDEX"
+
+          # Patch 2: getStatus() - Return Ready if Nix store binary exists on Linux
+          perl -i -0777 -pe 's/\Qasync getStatus(){if(await this.binaryExists(this.requiredVersion))\E/async getStatus(){console.log("[ClaudeCode] getStatus called, platform:",process.platform);if(process.platform==="linux"){try{const fs=require("fs");const claudePath="'"$CLAUDE_BIN_PATH"'";const exists=fs.existsSync(claudePath);console.log("[ClaudeCode]",claudePath,"exists:",exists);if(exists){console.log("[ClaudeCode] returning Ready");return Rv.Ready}}catch(e){console.log("[ClaudeCode] error:",e)}}if(await this.binaryExists(this.requiredVersion))/g' "$CLAUDE_CODE_INDEX"
+
+          echo "Successfully patched Claude Code support"
+        else
+          echo "Warning: index.js not found at expected location" >&2
+        fi
+        echo "##############################################################"
+      ''}
 
       # Replace native bindings
       cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.contents/node_modules/claude-native/claude-native-binding.node

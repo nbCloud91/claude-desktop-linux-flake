@@ -22,6 +22,10 @@
         claude-desktop = pkgs.callPackage ./pkgs/claude-desktop.nix {
           inherit patchy-cnb;
         };
+        claude-desktop-with-claude-code = pkgs.callPackage ./pkgs/claude-desktop.nix {
+          inherit patchy-cnb;
+          claude-code = pkgs.claude-code; # Uses claude-code from pkgs (respects overlays)
+        };
         claude-desktop-with-fhs = pkgs.buildFHSEnv {
           name = "claude-desktop";
           targetPkgs = pkgs:
