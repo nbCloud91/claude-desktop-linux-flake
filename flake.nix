@@ -47,27 +47,34 @@
             cp -r ${claude-desktop}/share/icons/* $out/share/icons/
           '';
         };
-        claude-desktop-with-fhs-with-claude-code = pkgs.buildFHSEnv {
-          name = "claude-desktop";
-          targetPkgs = pkgs:
-            with pkgs; [
-              docker
-              glibc
-              openssl
-              nodejs
-              uv
-            ];
-          runScript = "${claude-desktop-with-claude-code}/bin/claude-desktop";
-          extraInstallCommands = ''
-            # Copy desktop file from the claude-desktop-with-claude-code package
-            mkdir -p $out/share/applications
-            cp ${claude-desktop-with-claude-code}/share/applications/claude.desktop $out/share/applications/
+        claude-desktop-with-fhs-with-claude-code = pkgs.lib.makeOverridable ({claude-code ? pkgs.claude-code}:
+          let
+            claude-with-code = pkgs.callPackage ./pkgs/claude-desktop.nix {
+              inherit patchy-cnb claude-code;
+            };
+          in
+            pkgs.buildFHSEnv {
+              name = "claude-desktop";
+              targetPkgs = pkgs:
+                with pkgs; [
+                  docker
+                  glibc
+                  openssl
+                  nodejs
+                  uv
+                ];
+              runScript = "${claude-with-code}/bin/claude-desktop";
+              extraInstallCommands = ''
+                # Copy desktop file from the claude-desktop-with-claude-code package
+                mkdir -p $out/share/applications
+                cp ${claude-with-code}/share/applications/claude.desktop $out/share/applications/
 
-            # Copy icons
-            mkdir -p $out/share/icons
-            cp -r ${claude-desktop-with-claude-code}/share/icons/* $out/share/icons/
-          '';
-        };
+                # Copy icons
+                mkdir -p $out/share/icons
+                cp -r ${claude-with-code}/share/icons/* $out/share/icons/
+              '';
+            }
+        ) {};
         default = claude-desktop;
       };
     });
