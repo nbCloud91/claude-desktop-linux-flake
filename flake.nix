@@ -16,7 +16,7 @@
     self,
     nixpkgs,
     flake-utils,
-    claude-code-nix ? null,
+    claude-code-nix,
   }:
     flake-utils.lib.eachSystem ["x86_64-linux" "aarch64-linux"] (system: let
       pkgs = import nixpkgs {
@@ -24,9 +24,9 @@
         config.allowUnfree = true;
       };
 
-      # Use claude-code from input if provided, otherwise from nixpkgs
+      # Use claude-code from input if it has packages, otherwise from nixpkgs
       claude-code-pkg =
-        if claude-code-nix != null
+        if claude-code-nix ? packages.${system}
         then claude-code-nix.packages.${system}.default or claude-code-nix.packages.${system}.claude-code
         else pkgs.claude-code;
 
