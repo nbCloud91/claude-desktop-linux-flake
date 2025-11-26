@@ -162,8 +162,33 @@ in
       ''}
 
       # Replace native bindings
-      cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.contents/node_modules/claude-native/claude-native-binding.node
-      cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.unpacked/node_modules/claude-native/claude-native-binding.node
+      echo "##############################################################"
+      echo "Replacing native bindings..."
+
+      # Version 1.0.1217+ uses @ant/claude-native namespace
+      if [ -d "app.asar.contents/node_modules/@ant/claude-native" ]; then
+        echo "Found @ant/claude-native in app.asar.contents, copying patchy-cnb binding..."
+        cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.contents/node_modules/@ant/claude-native/claude-native-binding.node
+      # Fallback for older versions (0.14.x)
+      elif [ -d "app.asar.contents/node_modules/claude-native" ]; then
+        echo "Found claude-native in app.asar.contents (legacy path), copying patchy-cnb binding..."
+        cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.contents/node_modules/claude-native/claude-native-binding.node
+      else
+        echo "Warning: claude-native not found in app.asar.contents"
+      fi
+
+      if [ -d "app.asar.unpacked/node_modules/@ant/claude-native" ]; then
+        echo "Found @ant/claude-native in app.asar.unpacked, copying patchy-cnb binding..."
+        cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.unpacked/node_modules/@ant/claude-native/claude-native-binding.node
+      # Fallback for older versions (0.14.x)
+      elif [ -d "app.asar.unpacked/node_modules/claude-native" ]; then
+        echo "Found claude-native in app.asar.unpacked (legacy path), copying patchy-cnb binding..."
+        cp ${patchy-cnb}/lib/patchy-cnb.*.node app.asar.unpacked/node_modules/claude-native/claude-native-binding.node
+      else
+        echo "Warning: claude-native not found in app.asar.unpacked"
+      fi
+
+      echo "##############################################################"
 
       # .vite/build/index.js in the app.asar expects the Tray icons to be
       # placed inside the app.asar.
